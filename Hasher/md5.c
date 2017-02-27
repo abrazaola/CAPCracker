@@ -14,15 +14,12 @@
 // These vars will contain the hash
 uint32_t h0, h1, h2, h3;
  
-void md5(uint8_t *initial_msg, size_t initial_len) {
+void md5(char *initial_msg, size_t initial_len) {
  
     // Message (to prepare)
     uint8_t *msg = NULL;
- 
     // Note: All variables are unsigned 32 bit and wrap modulo 2^32 when calculating
- 
     // r specifies the per-round shift amounts
- 
     uint32_t r[] = {7, 12, 17, 22, 7, 12, 17, 22, 7, 12, 17, 22, 7, 12, 17, 22,
                     5,  9, 14, 20, 5,  9, 14, 20, 5,  9, 14, 20, 5,  9, 14, 20,
                     4, 11, 16, 23, 4, 11, 16, 23, 4, 11, 16, 23, 4, 11, 16, 23,
@@ -88,7 +85,6 @@ void md5(uint8_t *initial_msg, size_t initial_len) {
         for(j =0; j < 64; j++) printf("%x ", ((uint8_t *) w)[j]);
         puts("");
 #endif
- 
         // Initialize hash value for this chunk:
         uint32_t a = h0;
         uint32_t b = h1;
@@ -115,8 +111,6 @@ void md5(uint8_t *initial_msg, size_t initial_len) {
             printf("%2.2x%2.2x%2.2x%2.2x", p[0], p[1], p[2], p[3], d);
             puts("");
 #endif        
-
- 
             uint32_t f, g;
  
              if (i < 16) {
@@ -139,16 +133,10 @@ void md5(uint8_t *initial_msg, size_t initial_len) {
             uint32_t temp = d;
             d = c;
             c = b;
-            printf("rotateLeft(%x + %x + %x + %x, %d)\n", a, f, k[i], w[g], r[i]);
             b = b + LEFTROTATE((a + f + k[i] + w[g]), r[i]);
             a = temp;
-
-
- 
         }
- 
         // Add this chunk's hash to result so far:
- 
         h0 += a;
         h1 += b;
         h2 += c;
@@ -171,28 +159,21 @@ int main(int argc, char **argv) {
     char *msg = argv[1];
     size_t len = strlen(msg);
  
-    // benchmark
-    // int i;
-    // for (i = 0; i < 1000000; i++) {
-        md5(msg, len);
-    // }
- 
-    //var char digest[16] := h0 append h1 append h2 append h3 //(Output is in little-endian)
+    md5(msg, len);
     uint8_t *p;
  
     // display result
- 
     p=(uint8_t *)&h0;
-    printf("%2.2x%2.2x%2.2x%2.2x", p[0], p[1], p[2], p[3], h0);
+    printf("%2.2x%2.2x%2.2x%2.2x", p[0], p[1], p[2], p[3]);
  
     p=(uint8_t *)&h1;
-    printf("%2.2x%2.2x%2.2x%2.2x", p[0], p[1], p[2], p[3], h1);
+    printf("%2.2x%2.2x%2.2x%2.2x", p[0], p[1], p[2], p[3]);
  
     p=(uint8_t *)&h2;
-    printf("%2.2x%2.2x%2.2x%2.2x", p[0], p[1], p[2], p[3], h2);
+    printf("%2.2x%2.2x%2.2x%2.2x", p[0], p[1], p[2], p[3]);
  
     p=(uint8_t *)&h3;
-    printf("%2.2x%2.2x%2.2x%2.2x", p[0], p[1], p[2], p[3], h3);
+    printf("%2.2x%2.2x%2.2x%2.2x", p[0], p[1], p[2], p[3]);
     puts("");
  
     return 0;
