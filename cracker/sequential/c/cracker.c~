@@ -105,6 +105,7 @@ int execute(int start_value, int min, int max, const char* charset)
 		#endif
 		//calculate the hash of given key
 		char* hash = compute(key, password_length);
+		printf("La primera letra del hash es la: %d\n", hash[0]);
 		//release hash
 		free(hash);
 		hash = NULL;
