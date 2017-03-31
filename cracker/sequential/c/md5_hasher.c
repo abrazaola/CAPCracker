@@ -189,7 +189,6 @@ char* printHash()
             //move to next hash position
             last_idx_hash_array++;
         }
-        printf("\n");
         //add string end mark
         hash[MD5_LEN] = '\0';
     }
