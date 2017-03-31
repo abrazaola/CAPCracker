@@ -12,5 +12,8 @@ run:
 	./md5_brutus 1 1 numeric
 
 clean:
-	-rm -f cracker.o
+	-rm -f *.o
+	-rm -f *.c~
+	-rm -f *.h~
+	-rm -f *.gch
 	-rm -f cracker
