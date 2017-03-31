@@ -27,7 +27,7 @@ int ipow(int source, int exp)
     while (exp)
     {
         if (exp & 1)
-            result *= base;
+        result *= base;
         exp >>= 1;
         base *= base;
     }
@@ -37,100 +37,100 @@ int ipow(int source, int exp)
 
 char* getKeyIndex(int key_index, int key_size, const char *charset)
 {
-	//get memory for key
-	char *key;
-	key = (char*) malloc( sizeof(char) * (key_size) );
+    //get memory for key
+    char *key;
+    key = (char*) malloc( sizeof(char) * (key_size) );
 
-	//get charset length
-	const int charset_length = strlen(charset);
+    //get charset length
+    const int charset_length = strlen(charset);
 
-	//calculate a key given an index
-        int divisionNumber;
-        for(divisionNumber = 0; divisionNumber < key_size; divisionNumber++){
-			key[key_size-divisionNumber-1] = charset[key_index%charset_length];
-			key_index = key_index/charset_length;
-        }
-	return key;
+    //calculate a key given an index
+    int divisionNumber;
+    for(divisionNumber = 0; divisionNumber < key_size; divisionNumber++){
+        key[key_size-divisionNumber-1] = charset[key_index%charset_length];
+        key_index = key_index/charset_length;
+    }
+    return key;
 }
 
 void printKey(char *key, int password_length)
 {
-	int i;
-	for(i = 0; i < password_length; i++){
-	    printf("%c", key[i]);
-	}
-	printf("\n");
+    int i;
+    for(i = 0; i < password_length; i++){
+        printf("%c", key[i]);
+    }
+    printf("\n");
 }
 
 int estimateLength(start_value, min, max){
-	//todo finish
-	return -1;
+    //todo finish
+    return -1;
 }
 
 int execute(int start_value, int min, int max, const char* charset)
 {
-	//generated from globals
-	int charset_length = strlen(charset);
+    //generated from globals
+    int charset_length = strlen(charset);
 
-	//calculate key space
-	long key_space = 0L;
-	int i=0;
+    //calculate key space
+    long key_space = 0L;
+    int i=0;
 
-	printf("\t\tKey min is: %d\n", min);
-	printf("\t\tKey max is: %d\n", max);
+    printf("\t\tKey min is: %d\n", min);
+    printf("\t\tKey max is: %d\n", max);
 
-	#ifdef MULTIPLE_LEN
-		for(i = min; i <= max; i++){
-		    //peta con INTEGER OVERFLOW
-		    long value = ipow(charset_length, i);
-		    key_space += value;
-		    #ifdef DEBUG
-		    	printf("\t\tSingle key space for length %d is:\t%ld\n", i, value);
-		    #endif
-		}
-	#endif
+    #ifdef MULTIPLE_LEN
+    for(i = min; i <= max; i++){
+        //peta con INTEGER OVERFLOW
+        long value = ipow(charset_length, i);
+        key_space += value;
+        #ifdef DEBUG
+        printf("\t\tSingle key space for length %d is:\t%ld\n", i, value);
+        #endif
+    }
+    #endif
 
-	#ifndef MULTIPLE_LEN
-		key_space = ipow(charset_length, max);
-	#endif
+    #ifndef MULTIPLE_LEN
+    key_space = ipow(charset_length, max);
+    #endif
 
-	#ifdef DEBUG
-		printf("\t\tFinal key space is:\t%ld\n", key_space);
-	#endif
+    #ifdef DEBUG
+    printf("\t\tFinal key space is:\t%ld\n", key_space);
+    #endif
 
-	int password_length;
-	#ifndef MULTIPLE_LEN
-		//hook para mantener la consistencia de un size fijo de clave
-		password_length = max;
-	#endif
+    int password_length;
+    #ifndef MULTIPLE_LEN
+    //hook para mantener la consistencia de un size fijo de clave
+    password_length = max;
+    #endif
 
-	//key index
-	int idx;
+    //key index
+    int idx;
 
-	//generate keyspace
-	for(idx = start_value; idx < key_space; idx++){
-		#ifdef MULTIPLE_LEN
-			//password length will be variable depending on given key and min max values.
-			//password_length = estimateLength(start_value, min, max);
-			password_length = max;
-		#endif
-		//get key given an index
-		char *key = getKeyIndex(idx, password_length, charset);
-		//debug print
-		#ifdef PRINT_OUTPUT
-			//calculate the hash of given key
-			char* hash = compute(key, password_length);
-			//print it
-			printf("Key: %s\t MD5: %s\n", key, hash);
-		#endif
-		//release hash
-		free(hash);
-		hash = NULL;
-		//release key
-		free(key);
-		key = NULL;
-	}
-	return SUCCESS_CODE;
+    //generate keyspace
+    for(idx = start_value; idx < key_space; idx++){
+        #ifdef MULTIPLE_LEN
+        //password length will be variable depending on given key and min max values.
+        //password_length = estimateLength(start_value, min, max);
+        password_length = max;
+        #endif
+        //get key given an index
+        char *key = getKeyIndex(idx, password_length, charset);
+        //debug print
+        #ifdef PRINT_OUTPUT
+        //calculate the hash of given key
+        char* hash = compute(key, password_length);
+        //print it
+        printf("Key: %s\t MD5: %s\n", key, hash);
+        #endif
+        //release hash
+        free(hash);
+        hash = NULL;
+        //release key
+        free(key);
+        key = NULL;
+    }
+    return SUCCESS_CODE;
 }
 
 int brute_force(int start_value, char* min, char* max, char* charset_name)
