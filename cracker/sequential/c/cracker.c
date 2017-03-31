@@ -45,8 +45,8 @@ char* getKeyIndex(int key_index, int key_size, const char *charset)
 	//calculate a key given an index
         int divisionNumber;
         for(divisionNumber = 0; divisionNumber < key_size; divisionNumber++){
-		key[key_size-divisionNumber-1] = charset[key_index%charset_length];
-		key_index = key_index/charset_length;
+			key[key_size-divisionNumber-1] = charset[key_index%charset_length];
+			key_index = key_index/charset_length;
         }
 	return key;
 }
@@ -73,7 +73,7 @@ int execute(int start_value, int min, int max, const char* charset)
 	printf("\t\tKey max is: %d\n", max);
 
 	key_space = ipow(charset_length, max);
-	
+
 	#ifdef MULTIPLE_LEN
 		for(i = min; i <= max; i++){
 		    //peta con INTEGER OVERFLOW
@@ -100,11 +100,12 @@ int execute(int start_value, int min, int max, const char* charset)
 		//get key given an index
 		char *key = getKeyIndex(idx, password_length, charset);
 		//debug print
-		#ifdef PRINT_OUTPUT 
-			printKey(key, password_length);
+		#ifdef PRINT_OUTPUT
+			//calculate the hash of given key
+			char* hash = compute(key, password_length);
+			//print it
+			printf("Key: %s\t MD5: %s\n", key, hash);
 		#endif
-		//calculate the hash of given key
-		char* hash = compute(key, password_length);
 		//release hash
 		free(hash);
 		hash = NULL;

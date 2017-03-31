@@ -7,17 +7,18 @@
 #include <stdlib.h>
 #include <string.h>
 #include <stdint.h>
- 
+
 // leftrotate function definition
 #define LEFTROTATE(x, c) (((x) << (c)) | ((x) >> (32 - (c))))
 
 #define MD5_LEN 32
- 
+#define HEXADECIMAL_CONVERTION_ITERATION 8
+
 // These vars will contain the hash
 uint32_t h0, h1, h2, h3;
- 
+
 void md5(char *initial_msg, size_t initial_len) {
- 
+
     // Message (to prepare)
     uint8_t *msg = NULL;
     // Note: All variables are unsigned 32 bit and wrap modulo 2^32 when calculating
@@ -45,44 +46,44 @@ void md5(char *initial_msg, size_t initial_len) {
         0x655b59c3, 0x8f0ccc92, 0xffeff47d, 0x85845dd1,
         0x6fa87e4f, 0xfe2ce6e0, 0xa3014314, 0x4e0811a1,
         0xf7537e82, 0xbd3af235, 0x2ad7d2bb, 0xeb86d391};
- 
+
     h0 = 0x67452301;
     h1 = 0xefcdab89;
     h2 = 0x98badcfe;
     h3 = 0x10325476;
- 
+
     // Pre-processing: adding a single 1 bit
-    //append "1" bit to message    
+    //append "1" bit to message
     /* Notice: the input bytes are considered as bits strings,
        where the first bit is the most significant bit of the byte.[37] */
- 
+
     // Pre-processing: padding with zeros
     //append "0" bit until message length in bit ≡ 448 (mod 512)
     //append length mod (2 pow 64) to message
- 
+
     int new_len;
     for(new_len = initial_len*8 + 1; new_len%512!=448; new_len++);
     new_len /= 8;
- 
-    msg = calloc(new_len + 64, 1); // also appends "0" bits 
+
+    msg = calloc(new_len + 64, 1); // also appends "0" bits
                                    // (we alloc also 64 extra bytes...)
     memcpy(msg, initial_msg, initial_len);
     msg[initial_len] = 128; // write the "1" bit
- 
+
     uint32_t bits_len = 8*initial_len; // note, we append the len
     memcpy(msg + new_len, &bits_len, 4);           // in bits at the end of the buffer
- 
+
     // Process the message in successive 512-bit chunks:
     //for each 512-bit chunk of message:
     int offset;
     for(offset=0; offset<new_len; offset += (512/8)) {
- 
+
         // break chunk into sixteen 32-bit words w[j], 0 ≤ j ≤ 15
         uint32_t *w = (uint32_t *) (msg + offset);
- 
+
 #ifdef DEBUG
         printf("offset: %d %x\n", offset, offset);
- 
+
         int j;
         for(j =0; j < 64; j++) printf("%x ", ((uint8_t *) w)[j]);
         puts("");
@@ -92,7 +93,7 @@ void md5(char *initial_msg, size_t initial_len) {
         uint32_t b = h1;
         uint32_t c = h2;
         uint32_t d = h3;
- 
+
         // Main loop:
         uint32_t i;
         for(i = 0; i<64; i++) {
@@ -102,19 +103,19 @@ void md5(char *initial_msg, size_t initial_len) {
             printf("%i: ", i);
             p=(uint8_t *)&a;
             printf("%2.2x%2.2x%2.2x%2.2x ", p[0], p[1], p[2], p[3], a);
-         
+
             p=(uint8_t *)&b;
             printf("%2.2x%2.2x%2.2x%2.2x ", p[0], p[1], p[2], p[3], b);
-         
+
             p=(uint8_t *)&c;
             printf("%2.2x%2.2x%2.2x%2.2x ", p[0], p[1], p[2], p[3], c);
-         
+
             p=(uint8_t *)&d;
             printf("%2.2x%2.2x%2.2x%2.2x", p[0], p[1], p[2], p[3], d);
             puts("");
-#endif        
+#endif
             uint32_t f, g;
- 
+
              if (i < 16) {
                 f = (b & c) | ((~b) & d);
                 g = i;
@@ -123,7 +124,7 @@ void md5(char *initial_msg, size_t initial_len) {
                 g = (5*i + 1) % 16;
             } else if (i < 48) {
                 f = b ^ c ^ d;
-                g = (3*i + 5) % 16;          
+                g = (3*i + 5) % 16;
             } else {
                 f = c ^ (b | (~d));
                 g = (7*i) % 16;
@@ -131,7 +132,7 @@ void md5(char *initial_msg, size_t initial_len) {
 
 #ifdef ROUNDS
             printf("f=%x g=%d w[g]=%x\n", f, g, w[g]);
-#endif 
+#endif
             uint32_t temp = d;
             d = c;
             c = b;
@@ -143,59 +144,75 @@ void md5(char *initial_msg, size_t initial_len) {
         h1 += b;
         h2 += c;
         h3 += d;
- 
+
     }
- 
+
     // cleanup
     free(msg);
- 
+
 }
 
 char* printHash()
 {
-	unsigned char *hash = (char*) malloc( sizeof(char) * (MD5_LEN) );
+	unsigned char *hash = (char*) malloc( sizeof(char) * (MD5_LEN + 1) );
 
 	// display result
 	uint8_t *p;
 	p=(uint8_t *)&h0;
 
-char hex[2];
-sprintf(hex,"%2.2x",p[0]);
-printf("Valores de c: 1: %c 2: %c\n", hex[0], hex[1]);
+    //create a holder for iterations
+    uint8_t *holder[4];
+    holder[0] = (uint8_t *)&h0;
+    holder[1] = (uint8_t *)&h1;
+    holder[2] = (uint8_t *)&h2;
+    holder[3] = (uint8_t *)&h3;
 
-	printf("%2.2x%2.2x%2.2x%2.2x", p[0], p[1], p[2], p[3]);
-	hash[0] = p[0];
+    /*
+    char byte_level[2];
+    sprintf(byte_level,"%2.2x",p[0]);
+    printf("Valores de c: 1: %c 2: %c\n", byte_level[0], byte_level[1]);
+    */
 
-	p=(uint8_t *)&h1;
-	printf("%2.2x%2.2x%2.2x%2.2x", p[0], p[1], p[2], p[3]);
-
-	p=(uint8_t *)&h2;
-	printf("%2.2x%2.2x%2.2x%2.2x", p[0], p[1], p[2], p[3]);
-
-	p=(uint8_t *)&h3;
-	printf("%2.2x%2.2x%2.2x%2.2x", p[0], p[1], p[2], p[3]);
-	puts("");
-	return p;
+    int n_iteration = 4;
+    int idx = 0;
+    int last_idx_hash_array = 0;
+    for(idx; idx < n_iteration; idx++){
+        p = holder[idx];
+        //save formated content in formatted_content
+        char formatted_content[HEXADECIMAL_CONVERTION_ITERATION];
+        sprintf(formatted_content,"%2.2x%2.2x%2.2x%2.2x", p[0], p[1], p[2], p[3]);
+        //8 hexadecimal chars are saved on formatted content. now add it to hash
+        //add formatted content to hash char array
+        int i = 0;
+        for (int i = 0; i < HEXADECIMAL_CONVERTION_ITERATION; ++i){
+            hash[last_idx_hash_array] = formatted_content[i];
+            //move to next hash position
+            last_idx_hash_array++;
+        }
+        printf("\n");
+        //add string end mark
+        hash[MD5_LEN] = '\0';
+    }
+	return hash;
 }
 
 char* compute(char* key, int len)
 {
 	md5(key, len);
-	printHash();
-	return NULL;
+	return printHash();
 }
 
 int md5_main(int argc, char **argv) {
- 
+
     if (argc < 2) {
         printf("usage: %s 'string'\n", argv[0]);
         return 1;
     }
- 
+
     char *msg = argv[1];
     size_t len = strlen(msg);
- 
+
     compute(msg, len);
- 
+
     return 0;
 }
