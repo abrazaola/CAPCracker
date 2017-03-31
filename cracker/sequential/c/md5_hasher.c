@@ -154,11 +154,11 @@ void md5(char *initial_msg, size_t initial_len) {
 
 char* printHash()
 {
-	unsigned char *hash = (char*) malloc( sizeof(char) * (MD5_LEN + 1) );
+char *hash = (char*) malloc( sizeof(char) * (MD5_LEN + 1) );
 
-	// display result
-	uint8_t *p;
-	p=(uint8_t *)&h0;
+// display result
+uint8_t *p;
+p=(uint8_t *)&h0;
 
     //create a holder for iterations
     uint8_t *holder[4];
@@ -183,8 +183,8 @@ char* printHash()
         sprintf(formatted_content,"%2.2x%2.2x%2.2x%2.2x", p[0], p[1], p[2], p[3]);
         //8 hexadecimal chars are saved on formatted content. now add it to hash
         //add formatted content to hash char array
-        int i = 0;
-        for (int i = 0; i < HEXADECIMAL_CONVERTION_ITERATION; ++i){
+        int i;
+        for (i = 0; i < HEXADECIMAL_CONVERTION_ITERATION; ++i){
             hash[last_idx_hash_array] = formatted_content[i];
             //move to next hash position
             last_idx_hash_array++;
