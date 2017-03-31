@@ -1,8 +1,0 @@
-#ifndef MD5_HASHER_H_   
-#define MD5_HASHER_H_
-
-#define MD5_LEN 32
-
-char* compute(char* key, int len);
-
-#endif // MD5_HASHER_H_
