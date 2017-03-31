@@ -13,6 +13,8 @@
 #define DEBUG
 #define PRINT_OUTPUT
 
+#define MULTIPLE_LEN
+
 //global constants
 static const char numeric[] = "0123456789";
 static const char alpha[] = "abcdefghijklmnopqrstuvwxyz";
@@ -60,6 +62,11 @@ void printKey(char *key, int password_length)
 	printf("\n");
 }
 
+int estimateLength(start_value, min, max){
+	//todo finish
+	return -1;
+}
+
 int execute(int start_value, int min, int max, const char* charset)
 {
 	//generated from globals
@@ -72,8 +79,6 @@ int execute(int start_value, int min, int max, const char* charset)
 	printf("\t\tKey min is: %d\n", min);
 	printf("\t\tKey max is: %d\n", max);
 
-	key_space = ipow(charset_length, max);
-
 	#ifdef MULTIPLE_LEN
 		for(i = min; i <= max; i++){
 		    //peta con INTEGER OVERFLOW
@@ -85,18 +90,30 @@ int execute(int start_value, int min, int max, const char* charset)
 		}
 	#endif
 
+	#ifndef MULTIPLE_LEN
+		key_space = ipow(charset_length, max);
+	#endif
+
 	#ifdef DEBUG
 		printf("\t\tFinal key space is:\t%ld\n", key_space);
+	#endif
+
+	int password_length;
+	#ifndef MULTIPLE_LEN
+		//hook para mantener la consistencia de un size fijo de clave
+		password_length = max;
 	#endif
 
 	//key index
 	int idx;
 
-	//hook para mantener la consistencia de un size fijo de clave
-	int password_length = max;
-
 	//generate keyspace
 	for(idx = start_value; idx < key_space; idx++){
+		#ifdef MULTIPLE_LEN
+			//password length will be variable depending on given key and min max values.
+			//password_length = estimateLength(start_value, min, max);
+			password_length = max;
+		#endif
 		//get key given an index
 		char *key = getKeyIndex(idx, password_length, charset);
 		//debug print
