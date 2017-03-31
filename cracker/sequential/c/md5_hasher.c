@@ -174,9 +174,9 @@ p=(uint8_t *)&h0;
     */
 
     int n_iteration = 4;
-    int idx = 0;
+    int idx;
     int last_idx_hash_array = 0;
-    for(idx; idx < n_iteration; idx++){
+    for(idx = 0; idx < n_iteration; idx++){
         p = holder[idx];
         //save formated content in formatted_content
         char formatted_content[HEXADECIMAL_CONVERTION_ITERATION];
