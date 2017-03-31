@@ -47,13 +47,13 @@ char* getKeyIndex(int key_index, int key_size, const char *charset)
 	//calculate a key given an index
         int divisionNumber;
         for(divisionNumber = 0; divisionNumber < key_size; divisionNumber++){
-			key[key_size-divisionNumber-1] = charset[key_index%charset_length];
-			key_index = key_index/charset_length;
+		key[key_size-divisionNumber-1] = charset[key_index%charset_length];
+		key_index = key_index/charset_length;
         }
 	return key;
 }
 
-void printKey(char *key, int password_length)
+void printKey(char *key, int password_length, int charset_length)
 {
 	int i;
 	for(i = 0; i < password_length; i++){
@@ -62,10 +62,19 @@ void printKey(char *key, int password_length)
 	printf("\n");
 }
 
-int estimateLength(start_value, min, max){
-	//todo finish
-	return -1;
+#ifdef MULTIPLE_LEN
+int estimateLength(int value, int min, int max, int charset_length){
+	int key_size;
+	int current_key_length = min;
+	bool found = false; 
+	do{
+		key_space = ipow(charset_length, current_key_length);
+		found = value;
+		current_key_length++;
+	}while(current_key_length <= max && !found);
+	return current_key_length-1;
 }
+#endif
 
 int execute(int start_value, int min, int max, const char* charset)
 {
@@ -111,8 +120,7 @@ int execute(int start_value, int min, int max, const char* charset)
 	for(idx = start_value; idx < key_space; idx++){
 		#ifdef MULTIPLE_LEN
 			//password length will be variable depending on given key and min max values.
-			//password_length = estimateLength(start_value, min, max);
-			password_length = max;
+			password_length = estimateLength(start_value, min, max, charset_length);
 		#endif
 		//get key given an index
 		char *key = getKeyIndex(idx, password_length, charset);
