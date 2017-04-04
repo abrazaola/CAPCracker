@@ -15,6 +15,9 @@
 
 #define MULTIPLE_LEN
 
+#define NOT_CRACKED 0
+#define PAWNED 1
+
 //global constants
 static const char numeric[] = "0123456789";
 static const char alpha[] = "abcdefghijklmnopqrstuvwxyz";
@@ -31,14 +34,13 @@ int ipow(int source, int exp)
         exp >>= 1;
         base *= base;
     }
-
     return result;
 }
 
 char* getKeyIndex(int key_index, int key_size, const char *charset)
 {
 	#ifdef DEBUG
-		printf("Retrieving key %d of size %d", key_index, key_size);
+		printf("Retrieving key %d of size %d\n", key_index, key_size);
 	#endif
 	//get memory for key
 	char *key;
@@ -80,11 +82,6 @@ int estimateLength(int value, int min, int max, int charset_length){
 	return current_key_length-1;
 }
 #endif
-
-char* resolveKey(char* index_values){
-	//todo acabar este metodo
-	return index_values;
-}
 
 int execute(int start_value, int min, int max, char* target, const char* charset)
 {
@@ -132,7 +129,15 @@ int execute(int start_value, int min, int max, char* target, const char* charset
 
 	//temp variable to hold result
 	char* found;
-	for(iterate = start_value; iterate < key_space; iterate++){
+
+	//stop condition
+	int password_cracked = NOT_CRACKED;
+
+	//init while start cracking point
+	iterate = start_value;	
+
+	//start cracking until found
+	while(iterate < key_space && !password_cracked){
 		//int idx = iterate - payload;
 		int idx = iterate;
 		#ifdef MULTIPLE_LEN
@@ -158,22 +163,27 @@ int execute(int start_value, int min, int max, char* target, const char* charset
 				//release hash
 				free(hash);
 				hash = NULL;
-				break;
+				//pass cracked. stop
+				password_cracked = 1;
 			}
 		#endif
+		//try next
+		iterate++;
 	}
 	//show result
 	#ifdef PRINT_OUTPUT
-		if(found){
-			printf("\n\nHash found: \n\n%s\n\n", resolveKey(found));		
+		if(strlen(found)>0){
+			printf("\n\nHash found: \n\n%s\n\n", found);		
 		}
 		else{
-			printf("\n\nNO HASH FOUND. SORRY :(\n");
+			printf("\n\nNO HASH FOUND. SORRY :(\n\n");
 		}
 	#endif
-	//release key = found
-	free(found);
-	found = NULL;
+	if(password_cracked == PAWNED){
+		//release found key
+		free(found);
+		found = NULL;
+	}
 	return SUCCESS_CODE;
 }
 
