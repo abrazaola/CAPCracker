@@ -10,7 +10,7 @@
 #define SUCCESS_CODE 1
 #define ERROR_CODE 2
 #define NOT_CHARSET_VALID 127
-//#define DEBUG
+#define DEBUG
 #define PRINT_OUTPUT
 
 #define MULTIPLE_LEN
@@ -70,7 +70,7 @@ void printKey(char *key, int password_length, int charset_length)
 #ifdef MULTIPLE_LEN
 int estimateLength(int value, int min, int max, int charset_length){
 	int current_key_length = min;
-	int found = 0; 
+	int found = 0;
 	do{
 		long key_space = ipow(charset_length, current_key_length);
 		found = value < key_space;
@@ -134,7 +134,7 @@ int execute(int start_value, int min, int max, char* target, const char* charset
 	int password_cracked = NOT_CRACKED;
 
 	//init while start cracking point
-	iterate = start_value;	
+	iterate = start_value;
 
 	//start cracking until found
 	while(iterate < key_space && !password_cracked){
@@ -175,7 +175,7 @@ int execute(int start_value, int min, int max, char* target, const char* charset
 	//show result
 	#ifdef PRINT_OUTPUT
 		if(strlen(found)>0){
-			printf("\n\nHash found: \n\n%s\n\n", found);		
+			printf("\n\nHash found: \n\n%s\n\n", found);
 		}
 		else{
 			printf("\n\nNO HASH FOUND. SORRY :(\n\n");
