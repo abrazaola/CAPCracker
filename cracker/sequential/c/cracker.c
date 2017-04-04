@@ -10,7 +10,7 @@
 #define SUCCESS_CODE 1
 #define ERROR_CODE 2
 #define NOT_CHARSET_VALID 127
-#define DEBUG
+//#define DEBUG
 #define PRINT_OUTPUT
 
 #define MULTIPLE_LEN
@@ -138,7 +138,6 @@ int execute(int start_value, int min, int max, char* target, const char* charset
 
 	//start cracking until found
 	while(iterate < key_space && !password_cracked){
-		//int idx = iterate - payload;
 		int idx = iterate;
 		#ifdef MULTIPLE_LEN
 			//password length will be variable depending on given key and min max values.
@@ -149,24 +148,27 @@ int execute(int start_value, int min, int max, char* target, const char* charset
 			//mod idx;
 			payload = ipow(charset_length, last_passw_len);
 			//printf("payload %d\n", payload);
+			//printf("old idx value: %d\n", idx);
+			idx = iterate - payload;
+			//printf("new idx value: %d\n", idx);
 		}
 		//get key given an index
 		char *key = getKeyIndex(idx, password_length, charset);
-		//debug print
-		#ifdef PRINT_OUTPUT
-			//calculate the hash of given key
-			char* hash = compute(key, password_length);
+		//calculate the hash of given key
+		char* hash = compute(key, password_length);
+		#ifdef DEBUG
 			//print it
 			printf("Iteration: %d Key: %s MD5: %s\n", iterate, key, hash);
-			if(strcmp(hash, target)==0){
-				found = key;
-				//release hash
-				free(hash);
-				hash = NULL;
-				//pass cracked. stop
-				password_cracked = 1;
-			}
 		#endif
+		//compare it
+		if(strcmp(hash, target)==0){
+			found = key;
+			//release hash
+			free(hash);
+			hash = NULL;
+			//pass cracked. stop
+			password_cracked = PAWNED;
+		}
 		//try next
 		iterate++;
 	}
