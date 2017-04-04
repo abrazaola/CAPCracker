@@ -37,6 +37,9 @@ int ipow(int source, int exp)
 
 char* getKeyIndex(int key_index, int key_size, const char *charset)
 {
+	#ifdef DEBUG
+		printf("Retrieving key %d of size %d", key_index, key_size);
+	#endif
 	//get memory for key
 	char *key;
 	key = (char*) malloc( sizeof(char) * (key_size) );
@@ -64,19 +67,26 @@ void printKey(char *key, int password_length, int charset_length)
 
 #ifdef MULTIPLE_LEN
 int estimateLength(int value, int min, int max, int charset_length){
-	int key_size;
 	int current_key_length = min;
-	bool found = false; 
+	int found = 0; 
 	do{
-		key_space = ipow(charset_length, current_key_length);
-		found = value;
+		long key_space = ipow(charset_length, current_key_length);
+		found = value < key_space;
+		#ifdef DEBUG
+			printf("possible length=%d, key_space=%li, key_value=%d, valid=%d\n", current_key_length, key_space, value, found);
+		#endif
 		current_key_length++;
 	}while(current_key_length <= max && !found);
 	return current_key_length-1;
 }
 #endif
 
-int execute(int start_value, int min, int max, const char* charset)
+char* resolveKey(char* index_values){
+	//todo acabar este metodo
+	return index_values;
+}
+
+int execute(int start_value, int min, int max, char* target, const char* charset)
 {
 	//generated from globals
 	int charset_length = strlen(charset);
@@ -114,14 +124,27 @@ int execute(int start_value, int min, int max, const char* charset)
 	#endif
 
 	//key index
-	int idx;
+	int iterate;
 
 	//generate keyspace
-	for(idx = start_value; idx < key_space; idx++){
+	int last_passw_len = min;
+	int payload = 0;
+
+	//temp variable to hold result
+	char* found;
+	for(iterate = start_value; iterate < key_space; iterate++){
+		//int idx = iterate - payload;
+		int idx = iterate;
 		#ifdef MULTIPLE_LEN
 			//password length will be variable depending on given key and min max values.
-			password_length = estimateLength(start_value, min, max, charset_length);
+			int password_length = estimateLength(idx, min, max, charset_length);
 		#endif
+		if(password_length != last_passw_len){
+			//printf("mismatch: %d\t%d\n", password_length, last_passw_len);
+			//mod idx;
+			payload = ipow(charset_length, last_passw_len);
+			//printf("payload %d\n", payload);
+		}
 		//get key given an index
 		char *key = getKeyIndex(idx, password_length, charset);
 		//debug print
@@ -129,19 +152,32 @@ int execute(int start_value, int min, int max, const char* charset)
 			//calculate the hash of given key
 			char* hash = compute(key, password_length);
 			//print it
-			printf("Key: %s\t MD5: %s\n", key, hash);
+			printf("Iteration: %d Key: %s MD5: %s\n", iterate, key, hash);
+			if(strcmp(hash, target)==0){
+				found = key;
+				//release hash
+				free(hash);
+				hash = NULL;
+				break;
+			}
 		#endif
-		//release hash
-		free(hash);
-		hash = NULL;
-		//release key
-		free(key);
-		key = NULL;
 	}
+	//show result
+	#ifdef PRINT_OUTPUT
+		if(found){
+			printf("\n\nHash found: \n\n%s\n\n", resolveKey(found));		
+		}
+		else{
+			printf("\n\nNO HASH FOUND. SORRY :(\n");
+		}
+	#endif
+	//release key = found
+	free(found);
+	found = NULL;
 	return SUCCESS_CODE;
 }
 
-int brute_force(int start_value, char* min, char* max, char* charset_name)
+int brute_force(int start_value, char* min, char* max, char* hash, char* charset_name)
 {
     //convert los char* to int
     int max_len = atoi(max);
@@ -151,11 +187,11 @@ int brute_force(int start_value, char* min, char* max, char* charset_name)
 
     if(strcmp(charset_name, "numeric")==0){
         printf("\tSelected charset is NUMERIC\n");
-        return execute(start_value, min_len, max_len, numeric);
+        return execute(start_value, min_len, max_len,hash, numeric);
     }
     else if(strcmp(charset_name, "alpha")==0){
         printf("\tSelected charset is ALPHA\n");
-        return execute(start_value, min_len, max_len, alpha);
+        return execute(start_value, min_len, max_len, hash, alpha);
     }
     return NOT_CHARSET_VALID;
 }
@@ -171,6 +207,8 @@ int main(int argc, char **argv)
     printf("\tmax_size:\t%s\n", max_size);
     char* charset = argv[3];
     printf("\tcharset:\t%s\n", charset);
+    char* hash = argv[4];
+    printf("\ttarget:\t%s\n", hash);
     int start_value = 0;
-    return brute_force(start_value, min_size, max_size, charset);
+    return brute_force(start_value, min_size, max_size, hash, charset);
 }
