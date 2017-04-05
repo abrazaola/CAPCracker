@@ -4,14 +4,15 @@
 #include <string.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <omp.h>
 
 #include "md5_hasher.h"
+
+#include <omp.h>
 
 #define SUCCESS_CODE 1
 #define ERROR_CODE 2
 #define NOT_CHARSET_VALID 127
-#define DEBUG
+//#define DEBUG
 #define PRINT_OUTPUT
 
 #define MULTIPLE_LEN
@@ -21,7 +22,9 @@
 
 //global constants
 static const char numeric[] = "0123456789";
+static const char numeric_space[] = "0123456789 ";
 static const char alpha[] = "abcdefghijklmnopqrstuvwxyz";
+static const char alpha_space[] = "abcdefghijklmnopqrstuvwxyz ";
 
 
 int ipow(int source, int exp)
@@ -69,9 +72,10 @@ void printKey(char *key, int password_length, int charset_length)
 }
 
 #ifdef MULTIPLE_LEN
+//this method can be improved since we are calculating twice keyspace
 int estimateLength(int value, int min, int max, int charset_length){
 	int current_key_length = min;
-	int found = 0;
+	int found = 0; 
 	do{
 		long key_space = ipow(charset_length, current_key_length);
 		found = value < key_space;
@@ -84,6 +88,13 @@ int estimateLength(int value, int min, int max, int charset_length){
 }
 #endif
 
+int eval(int iterate, long key_space, int stop_condition){
+	int value = iterate < key_space && !stop_condition ? key_space : 0;
+	char *msg = (value == 0) ? "stop" : "continue";
+	printf("[Thread %d of %d] -  eval()=%d, %lu, %d, %s\n", omp_get_thread_num(), omp_get_num_threads(), iterate, key_space, stop_condition, msg); 
+	return value;
+}
+
 int execute(int start_value, int min, int max, char* target, const char* charset)
 {
 	//generated from globals
@@ -91,12 +102,9 @@ int execute(int start_value, int min, int max, char* target, const char* charset
 
 	//calculate key space
 	long key_space = 0L;
-	int i=0;
-
-	printf("\t\tKey min is: %d\n", min);
-	printf("\t\tKey max is: %d\n", max);
 
 	#ifdef MULTIPLE_LEN
+		int i=0;
 		for(i = min; i <= max; i++){
 		    //peta con INTEGER OVERFLOW
 		    long value = ipow(charset_length, i);
@@ -105,21 +113,16 @@ int execute(int start_value, int min, int max, char* target, const char* charset
 		    	printf("\t\tSingle key space for length %d is:\t%ld\n", i, value);
 		    #endif
 		}
-	#endif
-
-	#ifndef MULTIPLE_LEN
+	#else
 		key_space = ipow(charset_length, max);
 	#endif
 
 	#ifdef DEBUG
 		printf("\t\tFinal key space is:\t%ld\n", key_space);
 	#endif
-
+	
+	//current password length
 	int password_length;
-	#ifndef MULTIPLE_LEN
-		//hook para mantener la consistencia de un size fijo de clave
-		password_length = max;
-	#endif
 
 	//key index
 	int iterate;
@@ -131,61 +134,77 @@ int execute(int start_value, int min, int max, char* target, const char* charset
 	//temp variable to hold result
 	char* found;
 
-	//stop condition
+	//password cracked detection condition. per thread
 	int password_cracked = NOT_CRACKED;
-
-	//init while start cracking point
-	iterate = start_value;
+	long stop_value = key_space;
+	long attempts = 0;
+	//stop condition. multithread shared
+	int stop_condition = 0;
 
 	//start cracking until found
-	while(iterate < key_space && !password_cracked){
+	//#pragma omp parallel for shared(stop_value, attempts)
+	for(iterate = start_value ; iterate < stop_value; iterate++){
+printf("[Thread %d of %d] - %d %d %li\n", omp_get_thread_num(), omp_get_num_threads(), iterate, stop_condition, stop_value);
 		int idx = iterate;
 		#ifdef MULTIPLE_LEN
 			//password length will be variable depending on given key and min max values.
 			int password_length = estimateLength(idx, min, max, charset_length);
+			if(password_length != last_passw_len){
+				//printf("mismatch: %d\t%d\n", password_length, last_passw_len);
+				//mod idx;
+				payload = ipow(charset_length, last_passw_len);
+				//printf("payload %d\n", payload);
+				//printf("old idx value: %d\n", idx);
+				idx = iterate - payload;
+				//printf("new idx value: %d\n", idx);
+			}
 		#endif
-		if(password_length != last_passw_len){
-			//printf("mismatch: %d\t%d\n", password_length, last_passw_len);
-			//mod idx;
-			payload = ipow(charset_length, last_passw_len);
-			//printf("payload %d\n", payload);
-			//printf("old idx value: %d\n", idx);
-			idx = iterate - payload;
-			//printf("new idx value: %d\n", idx);
-		}
 		//get key given an index
 		char *key = getKeyIndex(idx, password_length, charset);
-		//calculate the hash of given key
+		//calculate the hash of given key. single thread all work
 		char* hash = compute(key, password_length);
+		//increase attempt count
+		attempts++;
 		#ifdef DEBUG
 			//print it
+			printf("[Thread %d of %d] - Attepts: %lu\n", omp_get_thread_num(), omp_get_num_threads(), attempts);
 			printf("Iteration: %d Key: %s MD5: %s\n", iterate, key, hash);
 		#endif
+		printf("[Thread %d of %d] - Iteration: %d Key: %s MD5: %s\n", omp_get_thread_num(), omp_get_num_threads(), iterate, key, hash);
 		//compare it
 		if(strcmp(hash, target)==0){
 			found = key;
+			printf("[Thread %d of %d] - FOUND THE PASSWD: %d Key: %s MD5: %s\n", omp_get_thread_num(), omp_get_num_threads(), iterate, key, hash);
 			//release hash
 			free(hash);
 			hash = NULL;
 			//pass cracked. stop
 			password_cracked = PAWNED;
+			stop_condition = 1;
 		}
-		//try next
-		iterate++;
-	}
+		//check if current thread found passwd or any other thread found it
+		if(password_cracked == PAWNED || stop_condition == 1){
+			stop_condition = 1;
+		}
+		//check if more iterations are needed
+		#pragma omp flush (stop_condition)
+		stop_value = eval(iterate, key_space, stop_condition);
+		#pragma omp flush (stop_value)
+	} //end for
+
 	//show result
-	#ifdef PRINT_OUTPUT
-		if(strlen(found)>0){
-			printf("\n\nHash found: \n\n%s\n\n", found);
-		}
-		else{
-			printf("\n\nNO HASH FOUND. SORRY :(\n\n");
-		}
-	#endif
 	if(password_cracked == PAWNED){
+		printf("\n\n\t#################\n");
+		printf("\tPassword cracked:\n");
+		printf("\t#################\n\n" );
+		printf("\n\tAttepts: %li \t of \t %li\n", attempts, key_space);
+		printf("\tPassword is: %s\n\n", found);
 		//release found key
 		free(found);
 		found = NULL;
+	}
+	else{
+		printf("\n\n\tNO HASH FOUND. SORRY :(\n\n");
 	}
 	return SUCCESS_CODE;
 }
@@ -196,15 +215,22 @@ int brute_force(int start_value, char* min, char* max, char* hash, char* charset
     int max_len = atoi(max);
     int min_len = atoi(min);
 
-    printf("\tSelected charset by user is %s\n", charset_name);
+    if(min_len > max_len){
+    printf("\tPlease specify a min value smaller or equal than max value\n");
+	return ERROR_CODE;
+    }
 
     if(strcmp(charset_name, "numeric")==0){
-        printf("\tSelected charset is NUMERIC\n");
         return execute(start_value, min_len, max_len,hash, numeric);
     }
+    else if(strcmp(charset_name, "numeric_space")==0){
+        return execute(start_value, min_len, max_len, hash, numeric_space);
+    }
     else if(strcmp(charset_name, "alpha")==0){
-        printf("\tSelected charset is ALPHA\n");
         return execute(start_value, min_len, max_len, hash, alpha);
+    }
+    else if(strcmp(charset_name, "alpha_space")==0){
+        return execute(start_value, min_len, max_len, hash, alpha_space);
     }
     return NOT_CHARSET_VALID;
 }
@@ -218,10 +244,19 @@ int main(int argc, char **argv)
     printf("\tmin_size:\t%s\n", min_size);
     char* max_size = argv[2];
     printf("\tmax_size:\t%s\n", max_size);
-    char* charset = argv[3];
+    char* cores = argv[3];
+    printf("\tthreads:\t%s\n", cores);
+    char* charset = argv[4];
     printf("\tcharset:\t%s\n", charset);
-    char* hash = argv[4];
+    char* hash = argv[5];
     printf("\ttarget:\t%s\n", hash);
     int start_value = 0;
+
+    //set openmp threads
+    int thread_num = atoi(cores);
+    if(thread_num >= 1){
+        omp_set_num_threads(thread_num);
+	printf("\tDedicated threads to cracking:\t%d\n", thread_num);
+    }
     return brute_force(start_value, min_size, max_size, hash, charset);
 }
