@@ -9,7 +9,7 @@ program: program.o
 	gcc cracker.o md5_hasher.o -o md5_brutus
 
 run:
-	./md5_brutus 1 1 numeric
+	./md5_brutus 1 2 numeric c20ad4d76fe97759aa27a0c99bff6710
 
 clean:
 	-rm -f cracker.o
