@@ -173,18 +173,17 @@ int execute(int start_value, int min, int max, char* target, const char* charset
 		iterate++;
 	}
 	//show result
-	#ifdef PRINT_OUTPUT
-		if(strlen(found)>0){
-			printf("\n\nHash found: \n\n%s\n\n", found);		
-		}
-		else{
-			printf("\n\nNO HASH FOUND. SORRY :(\n\n");
-		}
-	#endif
 	if(password_cracked == PAWNED){
+		printf("\n\n\t#################\n", found);
+		printf("\tPassword cracked:\n");
+		printf("\t#################\n\n", found);
+		printf("\t%s\n\n", found);
 		//release found key
 		free(found);
 		found = NULL;
+	}
+	else{
+		printf("\n\n\tNO HASH FOUND. SORRY :(\n\n");
 	}
 	return SUCCESS_CODE;
 }
