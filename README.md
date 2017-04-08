@@ -81,7 +81,7 @@ make clean
 
 ### Output
 Sequential with ```c20ad4d76fe97759aa27a0c99bff6710``` as example input and max
-size 2
+size 3
 ```
 ./md5_brutus 1 2 numeric c20ad4d76fe97759aa27a0c99bff6710
 	execution_path:	./md5_brutus
