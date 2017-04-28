@@ -10,10 +10,11 @@ program: program.o
 	mpicc crackermpi.o md5_hasher.o -o md5_brutus
 
 run:
-	time mpirun -np 4 ./md5_brutus 5 5 4 alpha bcfa52b9f7724713a01055f1ccdfbc9d
+	time mpirun -np 4 ./md5_brutus 5 5 alpha bcfa52b9f7724713a01055f1ccdfbc9d
 
 demo:
-	time mpirun -np 4 ./md5_brutus 1 4 4 alpha fe01ce2a7fbac8fafaed7c982a04e229
+	time mpirun -np 4 ./md5_brutus 1 4 alpha fe01ce2a7fbac8fafaed7c982a04e229
 
 clean:
 	-rm -f *.o
+	rm md5_brutus
