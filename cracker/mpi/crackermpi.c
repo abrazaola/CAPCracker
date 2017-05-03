@@ -22,17 +22,14 @@
 #define DEFAULT_THREAD_NUM 1
 #define MASTER 0
 
-//global constants
 static const char numeric[] = "0123456789";
 static const char numeric_space[] = "0123456789 ";
 static const char alpha[] = "abcdefghijklmnopqrstuvwxyz";
 static const char alpha_space[] = "abcdefghijklmnopqrstuvwxyz ";
 
-//global variables for MPI
 int numtasks, rank, len; 
 MPI_Status Stat;
 
-//for each cracker task
 #define BOUNDS 2
 #define SEND_EACH 1000
 int *ranges_sources;
@@ -64,14 +61,9 @@ char* getKeyIndex(int key_index, int key_size, const char *charset)
   #ifdef DEBUG
     printf("Retrieving key %d of size %d\n", key_index, key_size);
   #endif
-  //get memory for key
   char *key;
   key = (char*) malloc( sizeof(char) * (key_size) );
-
-  //get charset length
   const int charset_length = strlen(charset);
-
-  //calculate a key given an index
   int divisionNumber;
   for(divisionNumber = 0; divisionNumber < key_size; divisionNumber++){
     key[key_size-divisionNumber-1] = charset[key_index%charset_length];
@@ -116,7 +108,6 @@ void calculate_ranges(int key_space){
       printf("\t\tCalculando offset de rango: %d...\n", pass_per_tasks);
       int i=0;
       for(i = 0; i < len; i = i+BOUNDS){
-	//valor anterior + pass_per_tasks
         if(i==0){
    	  ranges_sources[i] = 0;
    	  ranges_sources[i+1] = pass_per_tasks - 1;
@@ -126,17 +117,13 @@ void calculate_ranges(int key_space){
 	  ranges_sources[i+1] = ranges_sources[i] + pass_per_tasks;
 	}
       }
-      //add remaining to last range
       printf("\t\tAñadiendo restante: %d al ultimo rango...\n", restante);
       ranges_sources[len-1] = key_space-1;
       printf("\t\tRango de calculo generado\n");
   }
 }
 int execute(int start_value, int min, int max, char* target, const char* charset){
-  //generated from globals
   int charset_length = strlen(charset);
-
-  //calculate key space
   long key_space = 0L;
 
   #ifdef MULTIPLE_LEN
@@ -157,10 +144,8 @@ int execute(int start_value, int min, int max, char* target, const char* charset
     printf("\t\tBruteforce key space:\t%ld\n", key_space);
   }
 
-  //calculate computing ranges
   calculate_ranges(key_space);
 
-  //send ranges to threads
   MPI_Scatter(ranges_sources, BOUNDS, MPI_INT, ranges_received, BOUNDS, MPI_INT, 0, MPI_COMM_WORLD);
 
   //#####################
@@ -175,7 +160,6 @@ int execute(int start_value, int min, int max, char* target, const char* charset
   int password_cracked = NOT_CRACKED;
   long attempts = 0L;
 
-  //overwrite values with master thread info
   start_value = ranges_received[0];
   key_space = ranges_received[1];
 
@@ -183,31 +167,25 @@ int execute(int start_value, int min, int max, char* target, const char* charset
     printf("[Thread %d of %d] - Will start cracking process from index %d to %ld\n", rank, numtasks, start_value, key_space);
   #endif
 
-  //start cracking until found
   for(iterate = start_value ; iterate <= key_space && global_stop == KEEP_RUNNING; iterate++){
         int idx = iterate;
         #ifdef MULTIPLE_LEN
-          //password length will be variable depending on given key and min max values.
           int password_length = estimateLength(idx, min, max, charset_length);
           if(password_length != last_passw_len){
             payload = ipow(charset_length, last_passw_len);
             idx = iterate - payload;
           }
         #endif
-        //get key given an index
         char *key = getKeyIndex(idx, password_length, charset);
         char* hash = compute(key, password_length);
         #ifdef DEBUG
          printf("[Thread %d of %d] - Iteration: %d Key: %s MD5: %s\n", rank, numtasks, iterate, key, hash);
         #endif
-        //compare it
         if(strcmp(hash, target)==0){
           found = key;
           printf("\n[Thread %d of %d] - FOUND THE PASSWD: %d Key: %s MD5: %s (attempt: %ld)\n\n", rank, numtasks, iterate, key, hash, attempts++);
-          //release hash
           free(hash);
           hash = NULL;
-          //pass cracked. stop
           password_cracked = PAWNED;
           local_stop_condition = STOP;
 	  printf("\n[Thread %d of %d] - Setting thread local_stop_condition to STOP\n", rank, numtasks);
@@ -246,8 +224,8 @@ int execute(int start_value, int min, int max, char* target, const char* charset
       printf("\n\tAttepts: %li \t of \t %li\n", attempts, key_space);
       printf("\tPassword is: %s\n\n", found);
       //release found key
-      //free(found);
-      //found = NULL;
+      free(found);
+      found = NULL;
     }
     else{
       printf("\n\n\tNO HASH FOUND. SORRY :(\n\n");
@@ -260,7 +238,6 @@ int execute(int start_value, int min, int max, char* target, const char* charset
 
 int brute_force(int start_value, char* min, char* max, char* hash, char* charset_name)
 {
-  //convert los char* to int
   int max_len = atoi(max);
   int min_len = atoi(min);
 
@@ -296,7 +273,6 @@ int main(int argc, char **argv)
 
   init_mpi(argc, argv);
   
-  //sustituir esto por getops
   execution_path = argv[0];
   min_size = argv[1];
   max_size = argv[2];
