@@ -1,4 +1,4 @@
-﻿#include <string.h>
+#include <string.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include "mpi.h"
@@ -32,11 +32,12 @@ static const char alpha_space[] = "abcdefghijklmnopqrstuvwxyz ";
 int numtasks, rank, len; 
 MPI_Status Stat;
 
-//for cracker
+//for each cracker task
 #define BOUNDS 2
+#define SEND_EACH 1000
 int *ranges_sources;
 int ranges_received[BOUNDS];
-int is_the_job_done = KEEP_RUNNING;
+int global_stop;
 
 void init_mpi(int argc, char **argv){
   MPI_Init(&argc,&argv);
@@ -44,11 +45,6 @@ void init_mpi(int argc, char **argv){
   MPI_Comm_rank(MPI_COMM_WORLD, &rank);
 }
 
-void showme(){
-	#ifdef DEBUG
-		printf("[Thread %d of %d]\n", rank, numtasks);
-	#endif
-}
 int ipow(int source, int exp)
 {
   long base = source;
@@ -78,7 +74,6 @@ char* getKeyIndex(int key_index, int key_size, const char *charset)
   //calculate a key given an index
   int divisionNumber;
   for(divisionNumber = 0; divisionNumber < key_size; divisionNumber++){
-    //showme();
     key[key_size-divisionNumber-1] = charset[key_index%charset_length];
     key_index = key_index/charset_length;
   }
@@ -150,7 +145,6 @@ int execute(int start_value, int min, int max, char* target, const char* charset
       long value = ipow(charset_length, i);
       key_space += value;
       #ifdef DEBUG
-      showme();
       if(rank == MASTER){
         printf("\t\tSingle key space for length %d is:\t%ld\n", i, value);
       }
@@ -172,14 +166,9 @@ int execute(int start_value, int min, int max, char* target, const char* charset
   //#####################
   //PARALLEL REGION START
   //#####################
-  for(i = 0; i < BOUNDS; i++){
-    #ifdef DEBUG
-	printf("Received range: %d to %d\n", ranges_received[0], ranges_received[1]);
-    #endif
-  }
 
   int iterate;
-  int stop_condition = KEEP_RUNNING;
+  int local_stop_condition = KEEP_RUNNING;
   int last_passw_len = min;
   int payload;
   char* found;
@@ -190,12 +179,12 @@ int execute(int start_value, int min, int max, char* target, const char* charset
   start_value = ranges_received[0];
   key_space = ranges_received[1];
 
+  #ifdef DEBUG
+    printf("[Thread %d of %d] - Will start cracking process from index %d to %ld\n", rank, numtasks, start_value, key_space);
+  #endif
+
   //start cracking until found
-  for(iterate = start_value ; iterate <= key_space && !stop_condition; iterate++){
-    if(stop_condition == KEEP_RUNNING) {
-      #ifdef DEBUG
-         printf("[Thread %d of %d] - %d %d \n", rank, numtasks, iterate, stop_condition);
-        #endif
+  for(iterate = start_value ; iterate <= key_space && global_stop == KEEP_RUNNING; iterate++){
         int idx = iterate;
         #ifdef MULTIPLE_LEN
           //password length will be variable depending on given key and min max values.
@@ -214,38 +203,42 @@ int execute(int start_value, int min, int max, char* target, const char* charset
         //compare it
         if(strcmp(hash, target)==0){
           found = key;
-          #ifdef DEBUG
-            printf("[Thread %d of %d] - FOUND THE PASSWD: %d Key: %s MD5: %s\n", rank, numtasks, iterate, key, hash);
-          #endif
+          printf("\n[Thread %d of %d] - FOUND THE PASSWD: %d Key: %s MD5: %s (attempt: %ld)\n\n", rank, numtasks, iterate, key, hash, attempts++);
           //release hash
           free(hash);
           hash = NULL;
           //pass cracked. stop
           password_cracked = PAWNED;
-	  printf("Password is: %s\n", key);
-          stop_condition = STOP;
+          local_stop_condition = STOP;
+	  printf("\n[Thread %d of %d] - Setting thread local_stop_condition to STOP\n", rank, numtasks);
+        }
+        else{
+          //increase attempt count
+          attempts++;
         }
 
-      //increase attempt count
-      attempts = attempts + 1;
-
-      //check if current thread found passwd or any other thread found it
-      if(password_cracked == PAWNED || stop_condition == STOP){
-        stop_condition = STOP;
+       if (attempts % SEND_EACH == 0){
+	/*
+	MPI_Allreduce(
+	    void* send_data,
+	    void* recv_data,
+	    int count,
+	    MPI_Datatype datatype,
+	    MPI_Op op,
+	    MPI_Comm communicator)
+	*/
+        MPI_Allreduce(&local_stop_condition, &global_stop, 1, MPI_INT, MPI_LOR, MPI_COMM_WORLD);
       }
-    }
   }//end for
 
   //###################
   //PARALLEL REGION END
   //###################
 
-  MPI_Reduce(&stop_condition, &is_the_job_done, 1, MPI_INT, MPI_SUM, 0, MPI_COMM_WORLD);
-
-  if(rank == MASTER){
-      printf("\n\n\t Job done: %d\t Pawned: %d\n", is_the_job_done, stop_condition);
+  if(local_stop_condition){
+      printf("\n\n\t global_stop: %d\t local_stop_condition: %d\n", global_stop, local_stop_condition);
     //this code is executed by master thread only
-    if(is_the_job_done == PAWNED && stop_condition == STOP){
+    if(global_stop){
       printf("\n\n");
       printf("\t#################\n");
       printf("\tPassword cracked:\n");
@@ -253,8 +246,8 @@ int execute(int start_value, int min, int max, char* target, const char* charset
       printf("\n\tAttepts: %li \t of \t %li\n", attempts, key_space);
       printf("\tPassword is: %s\n\n", found);
       //release found key
-      free(found);
-      found = NULL;
+      //free(found);
+      //found = NULL;
     }
     else{
       printf("\n\n\tNO HASH FOUND. SORRY :(\n\n");
@@ -302,8 +295,6 @@ int main(int argc, char **argv)
   int start_value;
 
   init_mpi(argc, argv);
-
-  showme();
   
   //sustituir esto por getops
   execution_path = argv[0];
