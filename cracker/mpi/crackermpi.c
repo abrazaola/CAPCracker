@@ -13,9 +13,6 @@
 
 #define MULTIPLE_LEN
 
-#define NOT_CRACKED 0
-#define PAWNED 1
-
 #define KEEP_RUNNING 0
 #define STOP 1
 
@@ -157,7 +154,6 @@ int execute(int start_value, int min, int max, char* target, const char* charset
   int last_passw_len = min;
   int payload;
   char* found;
-  int password_cracked = NOT_CRACKED;
   long attempts = 0L;
 
   start_value = ranges_received[0];
@@ -183,12 +179,9 @@ int execute(int start_value, int min, int max, char* target, const char* charset
         #endif
         if(strcmp(hash, target)==0){
           found = key;
-          printf("\n[Thread %d of %d] - FOUND THE PASSWD: %d Key: %s MD5: %s (attempt: %ld)\n\n", rank, numtasks, iterate, key, hash, attempts++);
           free(hash);
           hash = NULL;
-          password_cracked = PAWNED;
           local_stop_condition = STOP;
-	  printf("\n[Thread %d of %d] - Setting thread local_stop_condition to STOP\n", rank, numtasks);
         }
         else{
           //increase attempt count
@@ -214,9 +207,6 @@ int execute(int start_value, int min, int max, char* target, const char* charset
   //###################
 
   if(local_stop_condition){
-      printf("\n\n\t global_stop: %d\t local_stop_condition: %d\n", global_stop, local_stop_condition);
-    //this code is executed by master thread only
-    if(global_stop){
       printf("\n\n");
       printf("\t#################\n");
       printf("\tPassword cracked:\n");
@@ -226,10 +216,6 @@ int execute(int start_value, int min, int max, char* target, const char* charset
       //release found key
       free(found);
       found = NULL;
-    }
-    else{
-      printf("\n\n\tNO HASH FOUND. SORRY :(\n\n");
-    }
   }  
 
   MPI_Finalize();
