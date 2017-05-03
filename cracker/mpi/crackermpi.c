@@ -215,7 +215,6 @@ int execute(int start_value, int min, int max, char* target, const char* charset
 
   if(local_stop_condition){
       printf("\n\n\t global_stop: %d\t local_stop_condition: %d\n", global_stop, local_stop_condition);
-    //this code is executed by master thread only
     if(global_stop){
       printf("\n\n");
       printf("\t#################\n");
