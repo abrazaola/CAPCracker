@@ -10,7 +10,7 @@ program: program.o
 	gcc crackeromp.o md5_hasher.o -o md5_brutus -fopenmp
 
 run:
-	./md5_brutus 1 3 4 numeric_space c20ad4d76fe97759aa27a0c99bff6710
+	time ./md5_brutus 5 5 4 alpha bcfa52b9f7724713a01055f1ccdfbc9d
 
 clean:
 	-rm -f *.o
